@@ -1,96 +1,126 @@
 <!DOCTYPE html>
 <html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Document</title>
-</head>
+  </head>
 
-<body>
+  <body>
     <h1>Request Inspector</h1>
     <section>
-        <h2>Request Info</h2>
-        <form id="request-form">
-            <label for="url-input">URL:</label><br>
-            <input id="url-input" type="url">
-            <button type="submit">Send</button>
-        </form>
-        <pre id="request-info"></pre>
+      <h2>Request Info</h2>
+      <form id="request-form">
+        <label for="url-input">URL:</label><br />
+        <input id="url-input" type="url" />
+        <button type="submit">Send</button>
+      </form>
+      <pre id="request-info"></pre>
     </section>
     <section>
-        <h2>Response Info</h2>
-        <pre id="response-info"></pre>
+      <h2>Log</h2>
+      <pre id="log"></pre>
     </section>
-    <section>
-        <h2>Response Body</h2>
-        <pre id="response-body"></pre>
-    </section>
-    <pre></pre>
     <script>
-        (function () {
-            document.querySelector("#request-form").addEventListener("submit", handleRequestFormSubmit);
+      (function () {
+        document
+          .querySelector("#request-form")
+          .addEventListener("submit", handleRequestFormSubmit);
 
-            function handleRequestFormSubmit(event) {
-                event.preventDefault();
-                var urlInputEl = document.querySelector("#url-input");
-                var url = urlInputEl.value.trim();
-                if (isValidUrl(url)) {
-                    sendHttpRequest(url);
-                }
+        var logger = {
+          el: document.querySelector("#log"),
+          message: function (text) {
+            this.el.textContent += "\n\n";
+            this.el.textContent += new Date().toLocaleTimeString();
+            this.el.textContent += "\n" + text;
+          },
+          clear: function () {
+            this.el.textContent = "";
+          },
+        };
+        var htmlResponseIframe = {
+          el: null,
+          render: function (html) {
+            this.el = document.createElement("iframe");
+            this.el.setAttribute("id", "html-response");
+            this.el.setAttribute("style", "width:100%");
+            document.body.appendChild(this.el);
+            this.el.contentWindow.document.open();
+            this.el.contentWindow.document.write(html);
+            this.el.contentWindow.document.close();
+          },
+          remove: function () {
+            if (this.el) {
+              console.log(this.el);
+              this.el.parentNode.removeChild(this.el);
+              this.el = null;
             }
-            function isValidUrl(str) {
-                var pattern = new RegExp('^(https?:\\/\\/)?' + // protocol
-                    '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|' + // domain name
-                    '((\\d{1,3}\\.){3}\\d{1,3}))' + // OR ip (v4) address
-                    '(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*' + // port and path
-                    '(\\?[;&a-z\\d%_.~+=-]*)?' + // query string
-                    '(\\#[-a-z\\d_]*)?$', 'i'); // fragment locator
-                return !!pattern.test(str);
-            }
+          },
+        };
+        function handleRequestFormSubmit(event) {
+          event.preventDefault();
+          var urlInputEl = document.querySelector("#url-input");
+          var url = urlInputEl.value.trim();
+          if (isValidUrl(url)) {
+            sendHttpRequest(url);
+          }
+        }
 
+        function isValidUrl(str) {
+          var pattern = new RegExp(
+            "^(https?:\\/\\/)?" + // protocol
+              "((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|" + // domain name
+              "((\\d{1,3}\\.){3}\\d{1,3}))" + // OR ip (v4) address
+              "(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*" + // port and path
+              "(\\?[;&a-z\\d%_.~+=-]*)?" + // query string
+              "(\\#[-a-z\\d_]*)?$",
+            "i"
+          ); // fragment locator
+          return !!pattern.test(str);
+        }
 
-            function sendHttpRequest(url) {
-                var request = new XMLHttpRequest();
-                request.addEventListener("load", handleRequestLoad);
-                request.addEventListener("error", handleRequestError);
-                request.open("GET", url);
-                request.send();
-            }
-            function handleRequestLoad(event) {
-                var req = event.target;
-                var contentType = req.getResponseHeader("content-type");
-                var resInfoText = "";
+        function sendHttpRequest(url) {
+          var request = new XMLHttpRequest();
+          request.addEventListener("load", handleRequestLoad);
+          request.addEventListener("error", handleRequestError);
+          request.open("GET", url);
+          logger.clear();
+          htmlResponseIframe.remove();
+          request.send();
+          logger.message("request sent to " + url);
+        }
 
-                console.log(event);
-                console.log(req);
-                resInfoText += "URL: " + req.responseURL;
-                resInfoText += "\nSTATUS: " + req.status + " " + req.statusText;
-                if (req.responseType) {
-                    resInfoText += "\nTYPE: " + req.responseType;
-                }
+        function handleRequestLoad(event) {
+          var req = event.target;
+          var contentType = req.getResponseHeader("content-type");
+          var resInfoText = "response received...";
+          resInfoText += "\n\nURL: " + req.responseURL;
+          resInfoText += "\nSTATUS: " + req.status + " " + req.statusText;
+          if (req.responseType) {
+            resInfoText += "\nTYPE: " + req.responseType;
+          }
 
-                resInfoText += "\n\nHEADERS:"
-                resInfoText += "\n    " + req.getAllResponseHeaders();
+          resInfoText += "\n\nHEADERS:";
+          resInfoText += "\n" + req.getAllResponseHeaders();
 
-                document.querySelector("#response-info").textContent = resInfoText;
-                if (contentType === "application/json") {
-                    document.querySelector("#response-body").textContent = JSON.stringify(JSON.parse(req.response), null, 4)
-                }
-            }
-            function handleRequestError(event) {
-                console.log("uh oh");
-                console.log(event);
-            }
-        })();
-        // $.ajax({
-        //     method: "GET",
-        //     url: swapiTestUrl
-        // }).done(function (data, response, foo) {
-        //     console.log(data);
-        //     console.log(foo.getAllResponseHeaders());
-        // });
+          resInfoText += "\nBODY:\n";
+          if (contentType === "application/json") {
+            resInfoText += JSON.stringify(JSON.parse(req.response), null, 4);
+          } else if (contentType === "text/html") {
+            htmlResponseIframe.render(req.response);
+          } else {
+            resInfoText += req.response;
+          }
+          logger.message(resInfoText);
+        }
+
+        function handleRequestError(event) {
+          console.log(event);
+          logger.message(
+            "An error occurred. Open the console for more details."
+          );
+        }
+      })();
     </script>
-</body>
-
+  </body>
 </html>
