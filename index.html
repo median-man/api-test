@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body>
+    <h1>Request Inspector</h1>
+    <section>
+        <h2>Request Info</h2>
+        <pre id="request-info"></pre>
+    </section>
+    <section>
+        <h2>Response Info</h2>
+        <pre id="response-info"></pre>
+    </section>
+    <section>
+        <h2>Response Body</h2>
+        <pre id="response-body"></pre>
+    </section>
+    <pre></pre>
+    <script>
+        (function () {
+            var swapiTestUrl = "https://swapi.dev/api/people";
+            sendHttpRequest(swapiTestUrl);
+
+            function sendHttpRequest(url) {
+                var request = new XMLHttpRequest();
+                request.addEventListener("load", handleRequestLoad);
+                request.addEventListener("error", handleRequestError);
+                request.open("GET", url);
+                request.send();
+            }
+            function handleRequestLoad(event) {
+                var req = event.target;
+                var contentType = req.getResponseHeader("content-type");
+                var resInfoText = "";
+
+                console.log(event);
+                console.log(req);
+                resInfoText += "URL: " + req.responseURL;
+                resInfoText += "\nSTATUS: " + req.status + " " + req.statusText;
+                if (req.responseType) {
+                    resInfoText += "\nTYPE: " + req.responseType;
+                }
+
+                resInfoText += "\n\nHEADERS:"
+                resInfoText += "\n    " + req.getAllResponseHeaders();
+
+                document.querySelector("#response-info").textContent = resInfoText;
+                if (contentType === "application/json") {
+                    document.querySelector("#response-body").textContent = JSON.stringify(JSON.parse(req.response), null, 4)
+                }
+            }
+            function handleRequestError(event) {
+                console.log("uh oh");
+                console.log(event);
+            }
+        })();
+        // $.ajax({
+        //     method: "GET",
+        //     url: swapiTestUrl
+        // }).done(function (data, response, foo) {
+        //     console.log(data);
+        //     console.log(foo.getAllResponseHeaders());
+        // });
+    </script>
+</body>
+
+</html>
